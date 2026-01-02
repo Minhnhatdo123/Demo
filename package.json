@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "minify": "terser src/movia.js -c -m -o assets/movia.min.js && csso src/movia.css -o assets/movia.min.css"
+  },
+  "dependencies": {
+    "csso-cli": "^4.0.2",
+    "terser": "^5.44.1"
+  }
+}
