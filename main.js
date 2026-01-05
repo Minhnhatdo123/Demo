@@ -20,13 +20,13 @@ modal1Btn.addEventListener("click", () => {
 const modal2Btn = document.querySelector(".js-movia-modal-2");
 
 const modal2 = new Movia({
-  content: `  
-      <h1> Modal with Buttons </h1>
-      <p>This modal has buttons in the footer.</p>
-  `,
-  closeMethods: ["button", "overlay", "escape"],
-  destroyOnClose: true,
-  footer: true,
+    content: `  
+        <h1> Modal with Buttons </h1>
+        <p>This modal has buttons in the footer.</p>
+    `,
+    closeMethods: ["button", "overlay", "escape"],
+    destroyOnClose: true,
+    footer: true,
 });
 
 modal2.addFooterButton({
@@ -37,12 +37,12 @@ modal2.addFooterButton({
     }
 })
 modal2.addFooterButton({
-  label:"Confirm",
-  classNames:"modal-btn primary",
-  onClick: () => {
-      confirm("Action confirmed!");
-      modal2.close();
-  }
+    label:"Confirm",
+    classNames:"modal-btn primary",
+    onClick: () => {
+        confirm("Action confirmed!");
+        modal2.close();
+    }
 });
 modal2Btn.addEventListener("click", () => {
     modal2.open();
@@ -139,14 +139,15 @@ modal6btn.addEventListener("click", () => {
 const modal7btn = document.querySelector(".js-movia-modal-7");
 const modal7 = new Movia({
     content: `<iframe
-  width="100%"
-  height="315"
-  src="https://www.youtube.com/embed/9EDZixuODrw?list=RD9EDZixuODrw&start_radio=1"
-  title="YouTube video player"
-  frameborder="0"
-  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-  allowfullscreen>
-</iframe>`});
+    width="100%"
+    height="315"
+    src="https://www.youtube.com/embed/9EDZixuODrw?list=RD9EDZixuODrw&start_radio=1"
+    title="YouTube video player"
+    frameborder="0"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+    allowfullscreen>
+    </iframe>`
+});
 
 modal7btn.addEventListener("click", () => {
     modal7.open();

@@ -28,7 +28,7 @@ export class Movia {
     constructor(config = {})
     {   // Tham số : dùng để nhận dữ liệu từ bên ngoài
         const defaultConfig = {
-            templatedId : null,
+            templateId : null,
             content : "", 
             closeMethods : MoviaGlobal.defaultCloseMethods.slice() , // Các phương pháp đóng
             destroyOnClose : MoviaGlobal.destroyOnClose, // loại bỏ khỏi DOM
@@ -40,6 +40,35 @@ export class Movia {
         }
         const finalConfig = Object.assign({},defaultConfig,config);
         Object.assign(this,finalConfig); // sao chép toàn bộ thuộc tính vào this
+
+        /* ===============================
+           VALIDATE content / templateId
+        =============================== */
+
+        if(!this.content && !this.templateId)
+        {
+            throw new Error("Movia requires either 'content' or 'templateId' to be provided.");
+        }
+
+        if(this.content && this.templateId)
+        {
+            this.templateId = null;
+            console.warn("Both 'content' and 'templateId' are provided. 'templateId' will take precedence.");
+        }
+
+        if (this.templateId) {
+            const template = document.getElementById(this.templateId);
+
+            if (!template) {
+                throw new Error(
+                `[Movia] Template with id "${this.templateId}" does not exist.`
+                );
+            }
+                this.template = template; // lưu lại để render
+        } else {
+            this.template = null;
+        }
+
 
         // Thuộc tính : lưu dữ liệu cho từng đối tượng
         // Trạng thái (sống) runtime
@@ -99,8 +128,8 @@ export class Movia {
         
         
         // Lấy template hoặc content
-        if (this.templatedId) {
-            const template = document.getElementById(this.templatedId);
+        if (this.templateId) {
+            const template = document.getElementById(this.templateId);
             if (template && template.content) {
                 moviaContent.appendChild(template.content.cloneNode(true));
             }
@@ -391,7 +420,7 @@ export class Movia {
             if(!btn) return ;
             const openId = btn.dataset.openMovia ?? btn.getAttribute("data-open-movia");
             if(!openId) return;
-            if(openId === childMovia.templatedId || openId === String(childMovia.id))
+            if(openId === childMovia.templateId || openId === String(childMovia.id))
             {
                 childMovia.open();
             }
