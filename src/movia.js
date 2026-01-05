@@ -66,12 +66,12 @@ export class Movia {
 
         // Tạo backdrop
         const backdrop = document.createElement("div");
-        backdrop.className = "movia-backdrop";
+        backdrop.className = "movia";
         backdrop.id = `movia-${this.id}`
 
         // Tạo container
         const container = document.createElement("div");
-        container.className = "movia-container";
+        container.className = "movia__container";
 
         // Kiểm tra mảng css truyền vào
         if(Array.isArray(this.cssClass) && this.cssClass.length)
@@ -88,14 +88,14 @@ export class Movia {
         // Thêm nút close nếu có 'button' trong closeMethods
         if(Array.isArray(this.closeMethods) && this.closeMethods.includes('button')){
 
-            const closeBtn = this._createButton("&times;","movia-close" ,this.close.bind(this))
+            const closeBtn = this._createButton("&times;","movia__close" ,this.close.bind(this))
             container.appendChild(closeBtn)
             // Đóng movia khi nhấn nút close
         }
         
-        // Tạo movia-content
+        // Tạo movia__content
         const moviaContent = document.createElement("div");
-        moviaContent.className = "movia-content";
+        moviaContent.className = "movia__content";
         
         
         // Lấy template hoặc content
@@ -141,47 +141,13 @@ export class Movia {
         if(this.footer)
         {
             const moviaFooter = document.createElement("div");
-            moviaFooter.className = 'movia-footer';
+            moviaFooter.className = 'movia__footer';
 
             // Lưu lại để có thể thay đổi biến Footer
             this.footerElement = moviaFooter 
-            this.footerElement.innerHTML = "";  
-
-            // footer content lưu trước
-            if(this._pendingFooterContent !== null)
-            {
-                this.footerElement.innerHTML = this._pendingFooterContent;
-                this._pendingFooterContent = null;
-            }
-
-
-            // 2) Button từ config ban đầu
-            // Đảm bảo footer chỉ 1 lần render , tránh lặp lại và nhân đôi phần tử
-            if (!this._footerInitialized && this.footerButton?.length) {
-                this.footerButton.forEach(btnConfig => {
-                    const btn = this._createButton(
-                        btnConfig.label,
-                        btnConfig.classNames,
-                        btnConfig.onClick
-                    );
-                    moviaFooter.append(btn);
-                });
-                // footer xử lý button, lần sau mở, update -> không tạo button
-                this._footerInitialized = true; 
-            }
-            // button lưu trước khi mở
-
-            if(Array.isArray(this._pendingFooterButtons)  && this._pendingFooterButtons?.length)
-            {
-                this._pendingFooterButtons.forEach(cfg => {
-                    const btn = this._createButton(
-                        cfg.label, cfg.classNames, cfg.onClick);
-                    moviaFooter.appendChild(btn);
-                });
-                this._pendingFooterButtons = [];
-            }
-
-            container.append(moviaFooter);
+            
+            this._renderFooter(); // render footer lần đầu từ config    
+            container.appendChild(moviaFooter);
         }
 
         backdrop.append(container);
@@ -203,7 +169,7 @@ export class Movia {
             this._pendingContent = html;
             return ;
         }
-        const contentEl = this.backdrop.querySelector(".movia-content")
+        const contentEl = this.backdrop.querySelector(".movia__content")
         if(this.isOpen && contentEl)
         {
             contentEl.innerHTML = html;
@@ -361,42 +327,46 @@ export class Movia {
         return btn;
     }
     
-    // Thay đổi footer theo ý muôn
-    addFooterButton(btnConfig = {})
-    {   
+    addFooterButton(btnConfig = {}) {
         if (!btnConfig || typeof btnConfig !== "object") return;
-        // Nếu chưa có footerElement thì push vào mảng để đẩy vào DOM
-        if(!this.footerElement)
-        {  
-            const exists = this._pendingFooterButtons.some(btn => btn.label === btnConfig.label) 
-            // trường hợp sau khi movia mở mà muốn thêm button
-            // Lưu yêu cầu tạo button vào mảng 
-            if(!exists)
-            {
-                this._pendingFooterButtons.push({
-                    label : btnConfig.label,
-                    classNames:btnConfig.classNames,
-                    onClick:btnConfig.onClick
-                })
-            }
-            return;
-        }   
-        
-        // Nếu footer đã có → kiểm tra xem button đã tồn tại chưa
-        const existingButtons = Array.from(this.footerElement.children)
-        const alreadyExists = existingButtons.some(btn => {
-            return btn.textContent.trim() === String(btnConfig.label).trim();
-        })
-        // Nếu footerElement đã có => chỉ tạo button (không push)
-        if(!alreadyExists)
-        {
+
+        const exists = this.footerButton.some(
+            btn => btn.label === btnConfig.label
+        );
+        if (exists) return;
+
+        this.footerButton.push({
+            label: btnConfig.label,
+            classNames: btnConfig.classNames,
+            onClick: btnConfig.onClick
+        });
+
+        // Nếu footer đang mở → render lại
+        if (this.footerElement) {
+            this._renderFooter();
+        }
+    }
+    
+    _renderFooter() {
+        if (!this.footer || !this.footerElement) return;
+
+        // Clear sạch footer
+        this.footerElement.innerHTML = "";
+
+        // Render footer content nếu có
+        if (this._pendingFooterContent !== null) {
+            this.footerElement.innerHTML = this._pendingFooterContent;
+        }
+
+        // Render buttons từ DATA
+        this.footerButton.forEach(cfg => {
             const btn = this._createButton(
-                btnConfig.label,
-                btnConfig.classNames,
-                btnConfig.onClick
+                cfg.label,
+                cfg.classNames,
+                cfg.onClick
             );
             this.footerElement.appendChild(btn);
-        }
+        });
     }
     
 
@@ -456,7 +426,7 @@ export class Movia {
         // Content có thể thay đổi 
         if(this._pendingContent !== null)
         {
-            const contentEl = backdrop.querySelector(".movia-content");
+            const contentEl = backdrop.querySelector(".movia__content");
             if(contentEl)
             {
                 contentEl.innerHTML = this._pendingContent;
@@ -472,7 +442,7 @@ export class Movia {
         
         // đóng cuộn trang ở bên ngoài
         const scrollbarWidth = this._getScrollbarWidth();
-        document.body.classList.add("no-scroll");
+        document.body.classList.add("movia--no-scroll");
 
         const prePaddingRight = document.body.style.paddingRight || "";
         document.body.style.paddingRight = `${(parseFloat(prePaddingRight) || 0) + scrollbarWidth}px`;
@@ -480,7 +450,9 @@ export class Movia {
         
         // reset trạng thái nếu bị ẩn trước đó
         backdrop.style.visibility = "";
-        backdrop.classList.add("show");
+        requestAnimationFrame(() => {
+            backdrop.classList.add("movia--show");
+        });
 
         // Thêm hiệu ứng show - đáp ứng yêu cầu cùng 1 movia 
         requestAnimationFrame(() => {
@@ -499,7 +471,7 @@ export class Movia {
                 // Khôi phục nơi vị trí người dùng đang đọc
                 
                 if (typeof this._saveScroll === "number") {
-                    const moviaContent = backdrop.querySelector(".movia-content");
+                    const moviaContent = backdrop.querySelector(".movia__content");
                     if (moviaContent) {
                         moviaContent.scrollTop = this._saveScroll;
                     }
@@ -531,13 +503,13 @@ export class Movia {
         const backdrop = this.backdrop;
         
         // Lưu vị trí người dùng đang đọc
-        const moviaContent = backdrop.querySelector(".movia-content");
+        const moviaContent = backdrop.querySelector(".movia__content");
         this._saveScroll = moviaContent.scrollTop;
 
         // Mở lại cuộn trang ngoài cùng 
         // đóng tất cả movia thì trang cuối mở scroll
         if(!moviaStack.length){
-            document.body.classList.remove("no-scroll");
+            document.body.classList.remove("movia--no-scroll");
             if(typeof this._preBodyPaddingRight !== "undefined")
             {
                 document.body.style.paddingRight = this._preBodyPaddingRight;
@@ -550,7 +522,7 @@ export class Movia {
         }
 
         // Xóa backdrop với transition
-        backdrop.classList.remove("show");
+        backdrop.classList.remove("movia--show");
 
         // Xóa event Escape trong Close() để tắt movia 
         if (this._keydownHandler) {
@@ -561,7 +533,7 @@ export class Movia {
         let willDestroy;
         if(this.destroyOnClose === null || typeof this.destroyOnClose === "undefined")
         {
-            const moviaContainer = backdrop.querySelector(".movia-container")
+            const moviaContainer = backdrop.querySelector(".movia__container")
             const hasScroll = moviaContainer.scrollHeight > moviaContainer.clientHeight;
             willDestroy = !hasScroll;
         } else {
@@ -576,14 +548,15 @@ export class Movia {
                     this.backdrop = null;  // Rest về rỗng
                     this.footerElement = null; // Reset để lần mở sau tạo lại
                     this._footerInitialized = false;
+
+                    // reset footerButton để không append lại
+                    this._pendingFooterButtons = [];
+                    this._pendingFooterContent = null;
+                    this._pendingContent = null;
                 } else{
                     backdrop.style.visibility = "hidden"; // Nó chỉ ẩn
                 }
-                
-                // reset footerButton để không append lại
-                this._pendingFooterButtons = [];
-                this._pendingFooterContent = null;
-                this._pendingContent = null;
+
 
                 if(typeof this.onClose === 'function')
                 {
