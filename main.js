@@ -5,6 +5,7 @@ hljs.initHighlightingOnLoad();
 const modal1Btn = document.querySelector(".js-movia-modal-1");
 
 const modal1 = new Movia({
+    templateId:"modal-1",
   content: `
       <h1> Basic Modal </h1>
       <p>This is a simple modal.</p>

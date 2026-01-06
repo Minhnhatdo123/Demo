@@ -22,11 +22,21 @@ export const MoviaGlobal ={
 let moviaIdCounter = 0;
 
 export class Movia {
+    // Khai báo thuộc tính shape class cho TS
+    templateId = null;
+    content = "";
+    template = null; // DOM <template> sau khi resolve
+
+    closeMethods = [];
+    destroyOnClose = false;
+    footer = false;
+
+    cssClass = [];
     footerButton = [];
     onOpen = null;
     onClose = null;
-    constructor(config = {})
-    {   // Tham số : dùng để nhận dữ liệu từ bên ngoài
+    constructor(config = {}) // Object người dùng truyền vào
+    {   // Tham số mặc định
         const defaultConfig = {
             templateId : null,
             content : "", 
@@ -52,7 +62,7 @@ export class Movia {
 
         if(this.content && this.templateId)
         {
-            this.templateId = null;
+            this.content = null;
             console.warn("Both 'content' and 'templateId' are provided. 'templateId' will take precedence.");
         }
 
@@ -71,13 +81,13 @@ export class Movia {
 
 
         // Thuộc tính : lưu dữ liệu cho từng đối tượng
-        // Trạng thái (sống) runtime
+        // Trạng thái (sống) runtime : phụ thuộc Open/ Close
         this.id = ++moviaIdCounter; // ID của movia 
         this.isOpen = false; // mặc định chưa mở
         this.backdrop = null; // khởi tạo biến để sau này lưu DOM của backdrop, 
         this.footerElement = null;
         this.contentElement = null;
-
+        this._childOpenHandler = null; // handler mở movia con
         // Pending states : trạng thái chờ xử lý
         this._pendingContent = null;
         this._pendingFooterButtons = []; // Button thêm trực tiếp lúc đang mở
@@ -415,16 +425,23 @@ export class Movia {
     _attachChildOpenHandler(childMovia)
     {
         if(!this.backdrop) return ;
-        this.backdrop.addEventListener("click",(e)=>{
+
+        if(this._childOpenHandler) return;
+
+        this._childOpenHandler = (e) => {
             const btn = e.target.closest("[data-open-movia]");
             if(!btn) return ;
             const openId = btn.dataset.openMovia ?? btn.getAttribute("data-open-movia");
             if(!openId) return;
-            if(openId === childMovia.templateId || openId === String(childMovia.id))
-            {
-                childMovia.open();
+            const child = this._childMovias.find(m =>
+                openId === m.templateId || openId === String(m.id)
+            );
+            if(child){
+                child.open();
             }
-        });
+        }
+
+        this.backdrop.addEventListener("click", this._childOpenHandler);
     }
 
     // Mở Movia 
@@ -435,6 +452,13 @@ export class Movia {
         // Push stack movia 
         moviaStack.push(this);
         
+        if(moviaStack.length === 1)
+        {
+            const scrollbarWidth = this._getScrollbarWidth();
+            this._preBodyPaddingRight = document.body.style.paddingRight || "";
+            document.body.classList.add("movia--no-scroll");
+            document.body.style.paddingRight = `${(parseFloat(this._preBodyPaddingRight) || 0) + scrollbarWidth}px`;
+        }
 
         // Kiểm tra biến DOM của backdrop / tạo mới biến DOM
         // close() / destroy(false)  || close(true)/ destroy(true)
@@ -442,9 +466,7 @@ export class Movia {
 
         // Nếu vừa tạo → gắn event mở movia con
         if (this._childMovias.length) {
-            this._childMovias.forEach(child => {
-                this._attachChildOpenHandler(child);
-            });
+            this._attachChildOpenHandler();
         }
 
         // Add vào DOm nếu chưa có
@@ -467,15 +489,6 @@ export class Movia {
         if (this._keydownHandler) {
             document.addEventListener("keydown", this._keydownHandler);
         }
-
-        
-        // đóng cuộn trang ở bên ngoài
-        const scrollbarWidth = this._getScrollbarWidth();
-        document.body.classList.add("movia--no-scroll");
-
-        const prePaddingRight = document.body.style.paddingRight || "";
-        document.body.style.paddingRight = `${(parseFloat(prePaddingRight) || 0) + scrollbarWidth}px`;
-        this._preBodyPaddingRight = prePaddingRight;
         
         // reset trạng thái nếu bị ẩn trước đó
         backdrop.style.visibility = "";
@@ -537,17 +550,15 @@ export class Movia {
 
         // Mở lại cuộn trang ngoài cùng 
         // đóng tất cả movia thì trang cuối mở scroll
-        if(!moviaStack.length){
+        if(moviaStack.length === 0){
             document.body.classList.remove("movia--no-scroll");
             if(typeof this._preBodyPaddingRight !== "undefined")
             {
                 document.body.style.paddingRight = this._preBodyPaddingRight;
                 delete this._preBodyPaddingRight;
+            } else{
+                document.body.style.paddingRight = "";
             }
-            document.body.style.paddingRight = "";
-        } else {
-            const scrollbarWidth = this._getScrollbarWidth();
-            document.body.style.paddingRight = `${scrollbarWidth}px`
         }
 
         // Xóa backdrop với transition
