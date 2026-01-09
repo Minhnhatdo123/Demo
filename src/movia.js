@@ -22,7 +22,7 @@ export const MoviaGlobal ={
 let moviaIdCounter = 0;
 
 export class Movia {
-    // Khai báo thuộc tính shape class cho TS
+    // Định nghĩa các field(thuộc tính) mặc định mỗi Movia
     templateId = null;
     content = "";
     template = null; // DOM <template> sau khi resolve
@@ -33,10 +33,12 @@ export class Movia {
 
     cssClass = [];
     footerButton = [];
+
     onOpen = null;
     onClose = null;
+
     constructor(config = {}) // Object người dùng truyền vào
-    {   // Tham số mặc định
+    {   // trộn cấu hình người dùng với mặc định
         const defaultConfig = {
             templateId : null,
             content : "", 
@@ -44,15 +46,15 @@ export class Movia {
             destroyOnClose : MoviaGlobal.destroyOnClose, // loại bỏ khỏi DOM
             footer : false, 
             cssClass : MoviaGlobal.defaultCssClass.slice() ,
+            footerButton : [], // Button từ config ban đầu
             onOpen : null ,
             onClose : null,
-            footerButton : [], // Button từ config ban đầu
         }
         const finalConfig = Object.assign({},defaultConfig,config);
         Object.assign(this,finalConfig); // sao chép toàn bộ thuộc tính vào this
 
         /* ===============================
-           VALIDATE content / templateId
+           VALIDATE content / templateId (kiểm tra dữ liệu)
         =============================== */
 
         if(!this.content && !this.templateId)
@@ -79,21 +81,24 @@ export class Movia {
             this.template = null;
         }
 
-
-        // Thuộc tính : lưu dữ liệu cho từng đối tượng
-        // Trạng thái (sống) runtime : phụ thuộc Open/ Close
+        // Trạng thái (sống) runtime : phụ thuộc Open/ Close / destroy
         this.id = ++moviaIdCounter; // ID của movia 
         this.isOpen = false; // mặc định chưa mở
         this.backdrop = null; // khởi tạo biến để sau này lưu DOM của backdrop, 
         this.footerElement = null;
         this.contentElement = null;
         this._childOpenHandler = null; // handler mở movia con
-        // Pending states : trạng thái chờ xử lý
+       
+        this._isMounted = false; // trạng thái đã mount(gắn) vào DOM hay chưa
+        this._isDestroyed = false; // trạng thái đã bị hủy hay chưa
+        
+        // Pending states : trạng thái chờ xử lý - nội tạng FrameWork
         this._pendingContent = null;
         this._pendingFooterButtons = []; // Button thêm trực tiếp lúc đang mở
         this._pendingFooterContent = null; // Nội dung chân trang có thể thêm
         this._footerInitialized = false; // Footer đã được render từ dữ liệu được truyền vào hay chưa
         
+        this._keydownBound = false; // cờ đánh dấu đã gắn sự kiện keydown chưa
         this._keydownHandler = null; // Hành vi xử lý
         this._childMovias = []; // List movia
 
@@ -452,6 +457,7 @@ export class Movia {
         // Push stack movia 
         moviaStack.push(this);
         
+        // Chặn cuộn trang ngoài cùng khi có movia mở
         if(moviaStack.length === 1)
         {
             const scrollbarWidth = this._getScrollbarWidth();
@@ -460,10 +466,15 @@ export class Movia {
             document.body.style.paddingRight = `${(parseFloat(this._preBodyPaddingRight) || 0) + scrollbarWidth}px`;
         }
 
-        // Kiểm tra biến DOM của backdrop / tạo mới biến DOM
-        // close() / destroy(false)  || close(true)/ destroy(true)
-        const backdrop = this.backdrop || this.createMovia();
+        // Mount DOM nếu chưa có
+        if(!this._isMounted)
+        {
+            this.backdrop = this.createMovia();
+            document.body.appendChild(this.backdrop);   
+            this._isMounted = true;
+        }
 
+        const backdrop = this.backdrop;
         // Nếu vừa tạo → gắn event mở movia con
         if (this._childMovias.length) {
             this._attachChildOpenHandler();
@@ -474,7 +485,7 @@ export class Movia {
             document.body.appendChild(backdrop);
         } 
 
-        // Content có thể thay đổi 
+        // Apply pending content nếu có
         if(this._pendingContent !== null)
         {
             const contentEl = backdrop.querySelector(".movia__content");
@@ -486,18 +497,17 @@ export class Movia {
         }
 
         // thêm event Escape trong Open() để tắt movia 
-        if (this._keydownHandler) {
+        if (this._keydownHandler && !this._keydownBound) {
             document.addEventListener("keydown", this._keydownHandler);
+            this._keydownBound = true;
         }
         
-        // reset trạng thái nếu bị ẩn trước đó
         backdrop.style.visibility = "";
+        // reset trạng thái nếu bị ẩn trước đó
         requestAnimationFrame(() => {
             backdrop.classList.add("movia--show");
-        });
 
-        // Thêm hiệu ứng show - đáp ứng yêu cầu cùng 1 movia 
-        requestAnimationFrame(() => {
+            // Thêm hiệu ứng show - đáp ứng yêu cầu cùng 1 movia 
             backdrop.dispatchEvent(new CustomEvent("movia:ready"));
             if (typeof this.onReady === "function") {
                 try{
@@ -507,9 +517,12 @@ export class Movia {
                     console.log(err);
                 }
             }
+
         });
 
+
         this._onTransitionEnd(backdrop,()=>{
+            if(!this.isOpen) return; // nếu đã đóng trong lúc chờ transition
                 // Khôi phục nơi vị trí người dùng đang đọc
                 
                 if (typeof this._saveScroll === "number") {
@@ -518,14 +531,7 @@ export class Movia {
                         moviaContent.scrollTop = this._saveScroll;
                     }
                 }
-                
-                if (typeof this.onOpen === "function") {
-                    try{
-                        this.onOpen();
-                    } catch(err) {
-                        console.error(err);
-                    }
-                }
+                this.onOpen?.()
         })
     }
 
@@ -546,10 +552,9 @@ export class Movia {
         
         // Lưu vị trí người dùng đang đọc
         const moviaContent = backdrop.querySelector(".movia__content");
-        this._saveScroll = moviaContent.scrollTop;
+        if(moviaContent) this._saveScroll = moviaContent.scrollTop;
 
-        // Mở lại cuộn trang ngoài cùng 
-        // đóng tất cả movia thì trang cuối mở scroll
+        // Nếu stack(không modal con) trống → cho phép cuộn trang
         if(moviaStack.length === 0){
             document.body.classList.remove("movia--no-scroll");
             if(typeof this._preBodyPaddingRight !== "undefined")
@@ -565,27 +570,21 @@ export class Movia {
         backdrop.classList.remove("movia--show");
 
         // Xóa event Escape trong Close() để tắt movia 
-        if (this._keydownHandler) {
+        if (this._keydownHandler && this._keydownBound) {
             document.removeEventListener("keydown", this._keydownHandler);
+            this._keydownBound = false;
         }
         
-        // Trường hợp movia có scrollBar(thanh cuộn) thì ko gỡ khỏi DOM 
-        let willDestroy;
-        if(this.destroyOnClose === null || typeof this.destroyOnClose === "undefined")
-        {
-            const moviaContainer = backdrop.querySelector(".movia__container")
-            const hasScroll = moviaContainer.scrollHeight > moviaContainer.clientHeight;
-            willDestroy = !hasScroll;
-        } else {
-            // Kiểm tra trường hợp close(true)/destroy() hay close(false)
-           willDestroy = forceDestroy || this.destroyOnClose;
-        }
+        const willDestroy = forceDestroy || this.destroyOnClose;
 
         this._onTransitionEnd(backdrop,() => {
+            if(this.isOpen) return; // chỉ bắt đầu đóng nếu vẫn đang đóng
                 if(willDestroy)
                 {
                     backdrop.remove();// Xóa khỏi DOM
                     this.backdrop = null;  // Rest về rỗng
+                    this._isMounted = false;
+
                     this.footerElement = null; // Reset để lần mở sau tạo lại
                     this._footerInitialized = false;
 
@@ -596,17 +595,7 @@ export class Movia {
                 } else{
                     backdrop.style.visibility = "hidden"; // Nó chỉ ẩn
                 }
-
-
-                if(typeof this.onClose === 'function')
-                {
-                    try{
-                        this.onClose();
-                    } catch(err)
-                    {
-                        console.log(err);
-                    }
-                }
+                this.onClose?.()
         })
         
     }
