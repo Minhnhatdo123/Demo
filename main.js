@@ -10,7 +10,8 @@ const modal1 = new Movia({
       <h1> Basic Modal </h1>
       <p>This is a simple modal.</p>
   `,
-  closeMethod: ["button", "overlay", "escape"]
+  closeMethod: ["button", "overlay", "escape"],
+  destroyOnClose: false,
 });
 
 modal1Btn.addEventListener("click", () => {
@@ -53,6 +54,7 @@ modal2Btn.addEventListener("click", () => {
 const modal3btn = document.querySelector(".js-movia-modal-3");
 
 const modal3 = new Movia({
+    enableScrollLock: true,
     content: `
       <h1>Large Content Modal</h1>
       <p>This modal contains a large amount of content, suitable for displaying extended text or information.</p>

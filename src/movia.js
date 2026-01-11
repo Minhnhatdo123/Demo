@@ -7,12 +7,16 @@ function getTopMovia() {
     return moviaStack[moviaStack.length - 1] || null;
 }
 
+function shouldLockScroll() {
+    return moviaStack.some(movia => movia.enableScrollLock);
+}
+
 export const MoviaGlobal ={
     defaultCloseMethods : ['button','overlay','escape'],
     defaultCssClass: [],
     destroyOnClose : false,
     autoSanitize: true, // cờ flag tự động làm sạch dữ liệu
-    
+    enableScrollLock: true,
     set(config = {})
     {
         Object.assign(this,config)
@@ -30,6 +34,7 @@ export class Movia {
     closeMethods = [];
     destroyOnClose = false;
     footer = false;
+    enableScrollLock = true;
 
     cssClass = [];
     footerButton = [];
@@ -44,6 +49,7 @@ export class Movia {
             content : "", 
             closeMethods : MoviaGlobal.defaultCloseMethods.slice() , // Các phương pháp đóng
             destroyOnClose : MoviaGlobal.destroyOnClose, // loại bỏ khỏi DOM
+            enableScrollLock : MoviaGlobal.enableScrollLock, // khóa cuộn trang
             footer : false, 
             cssClass : MoviaGlobal.defaultCssClass.slice() ,
             footerButton : [], // Button từ config ban đầu
@@ -471,12 +477,13 @@ export class Movia {
         moviaStack.push(this);
         
         // Chặn cuộn trang ngoài cùng khi có movia mở
-        if(moviaStack.length === 1)
+        if(moviaStack.length === 1 && shouldLockScroll())
         {
             const scrollbarWidth = this._getScrollbarWidth();
             this._preBodyPaddingRight = document.body.style.paddingRight || "";
             document.body.classList.add("movia--no-scroll");
-            document.body.style.paddingRight = `${(parseFloat(this._preBodyPaddingRight) || 0) + scrollbarWidth}px`;
+            document.body.style.paddingRight = 
+            `${(parseFloat(this._preBodyPaddingRight) || 0) + scrollbarWidth}px`;
         }
 
         // Mount DOM nếu chưa có
@@ -565,7 +572,7 @@ export class Movia {
         if(moviaContent) this._saveScroll = moviaContent.scrollTop;
 
         // Nếu stack(không modal con) trống → cho phép cuộn trang
-        if(moviaStack.length === 0){
+        if(!shouldLockScroll()){
             document.body.classList.remove("movia--no-scroll");
             if(typeof this._preBodyPaddingRight !== "undefined")
             {
