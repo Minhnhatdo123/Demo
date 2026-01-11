@@ -374,25 +374,33 @@ export class Movia {
     addFooterButton(btnConfig = {}) {
         if (!btnConfig || typeof btnConfig !== "object") return;
 
-        const exists = this.footerButton.some(
+        const exists = [...this.footerButton,...this._pendingFooterButtons]
+        .some(
             btn => btn.label === btnConfig.label
         );
         if (exists) return;
 
-        this.footerButton.push({
-            label: btnConfig.label,
-            classNames: btnConfig.classNames,
-            onClick: btnConfig.onClick
-        });
-
-        // Nếu footer đang mở → render lại
-        if (this.footerElement) {
-            this._renderFooter();
+        // Chưa mount hoặc chưa có footer -> pending
+        if(!this.footerElement)
+        {
+            this._pendingFooterButtons.push(btnConfig);
+            return;
         }
+
+        this.footerButton.push(btnConfig);
+        this._renderFooter();
+        
     }
     
     _renderFooter() {
         if (!this.footer || !this.footerElement) return;
+
+        // Lần đầu render -> merge pending buttons
+        if (!this._footerInitialized) {
+            this.footerButton.push(...this._pendingFooterButtons);
+            this._pendingFooterButtons = [];
+            this._footerInitialized = true;
+        }
 
         // Clear sạch footer
         this.footerElement.innerHTML = "";
@@ -427,7 +435,7 @@ export class Movia {
     }
 
     // Gắn sự kiện mở Movia con
-    _attachChildOpenHandler(childMovia)
+    _attachChildOpenHandler()
     {
         if(!this.backdrop) return ;
 
@@ -451,6 +459,11 @@ export class Movia {
 
     // Mở Movia 
     open() {
+        if (this._isDestroyed) {
+            console.warn("Movia has been destroyed and cannot be reopened.");
+            return;
+        }
+
         if (this.isOpen) return; // Nếu mở movia thì quay lại
         this.isOpen = true;
         
@@ -503,19 +516,16 @@ export class Movia {
         }
         
         backdrop.style.visibility = "";
-        // reset trạng thái nếu bị ẩn trước đó
+        // đợi browser render xong frame hiện tại rồi mới chạy animation
         requestAnimationFrame(() => {
             backdrop.classList.add("movia--show");
 
             // Thêm hiệu ứng show - đáp ứng yêu cầu cùng 1 movia 
             backdrop.dispatchEvent(new CustomEvent("movia:ready"));
-            if (typeof this.onReady === "function") {
-                try{
-                    this.onReady();
-                } catch(err)
-                {
-                    console.log(err);
-                }
+            try {
+                this.onReady?.();
+            } catch (err) {
+                console.error("[Movia] onReady error:", err);
             }
 
         });
@@ -581,9 +591,15 @@ export class Movia {
             if(this.isOpen) return; // chỉ bắt đầu đóng nếu vẫn đang đóng
                 if(willDestroy)
                 {
+                    if(this._childOpenHandler){
+                        backdrop.removeEventListener("click", this._childOpenHandler);
+                        this._childOpenHandler = null;
+                    }
+
                     backdrop.remove();// Xóa khỏi DOM
                     this.backdrop = null;  // Rest về rỗng
-                    this._isMounted = false;
+                    this._isMounted = false; // Chưa mount
+                    this._isDestroyed = true; // đã bị hủy
 
                     this.footerElement = null; // Reset để lần mở sau tạo lại
                     this._footerInitialized = false;
@@ -592,6 +608,7 @@ export class Movia {
                     this._pendingFooterButtons = [];
                     this._pendingFooterContent = null;
                     this._pendingContent = null;
+                    this.footerButton = [];
                 } else{
                     backdrop.style.visibility = "hidden"; // Nó chỉ ẩn
                 }
