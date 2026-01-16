@@ -6,12 +6,16 @@ const modal1Btn = document.querySelector(".js-movia-modal-1");
 
 const modal1 = new Movia({
     templateId:"modal-1",
-  content: `
-      <h1> Basic Modal </h1>
-      <p>This is a simple modal.</p>
-  `,
-  closeMethod: ["button", "overlay", "escape"],
-  destroyOnClose: false,
+    content: `
+        <h1> Basic Modal </h1>
+        <p>This is a simple modal.</p>
+    `,
+    closeMethods: ["button", "overlay", "escape"],
+    destroyOnClose:false,
+    enableScrollLock:false, // Tắt khóa cuộn trang cho modal này
+    scrollLockTarget: () => {
+        return document.querySelector('.wrapper');
+    } // Chỉ định mục tiêu khóa cuộn trang riêng cho modal này
 });
 
 modal1Btn.addEventListener("click", () => {
@@ -27,8 +31,8 @@ const modal2 = new Movia({
         <p>This modal has buttons in the footer.</p>
     `,
     closeMethods: ["button", "overlay", "escape"],
-    destroyOnClose: true,
     footer: true,
+    destroyOnClose:false,
 });
 
 modal2.addFooterButton({
@@ -73,6 +77,7 @@ const modal3 = new Movia({
       <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Nihil cumque adipisci mollitia voluptatibus explicabo non perspiciatis eaque sed qui. Est.</p>
       <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Nihil cumque adipisci mollitia voluptatibus explicabo non perspiciatis eaque sed qui. Est.</p>
     `,
+    destroyOnClose:false,
     })
 
 modal3btn.addEventListener("click", () => {
@@ -87,6 +92,7 @@ const modal4 = new Movia({
       <p>This modal can only be closed via the button in the footer for a controlled experience.</p> 
       `,
     footer: true,
+    destroyOnClose:false,
 });
 
 modal4.addFooterButton({
@@ -125,6 +131,7 @@ const modal6 = new Movia({
         <p>This modal demonstrates interaction between multiple modals.</p>
         <button class="btn js-open-basic-modal">Open Basic Modal</button>
     `,
+    destroyOnClose:false,
     onOpen() {
         const btn = this.backdrop.querySelector(".js-open-basic-modal");
         if (!btn) return;
@@ -149,7 +156,8 @@ const modal7 = new Movia({
     frameborder="0"
     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
     allowfullscreen>
-    </iframe>`
+    </iframe>`,
+    destroyOnClose:false,
 });
 
 modal7btn.addEventListener("click", () => {
