@@ -18,13 +18,16 @@ function getTopScrollLockMovia() {
     return null;
 }
 
+// Cập nhật trạng thái khóa cuộn trang
 function updateScrollLock()
 {
     const newOwner = getTopScrollLockMovia();
     if(newOwner === activeScrollLockOwner) return;
 
-    // unlock owner cũ
-    activeScrollLockOwner?._unlockScroll();
+    // chỉ Owner hiện tại mới mở khóa
+    if(activeScrollLockOwner){
+        activeScrollLockOwner._unlockScroll();
+    }
 
     if(newOwner){
         newOwner._activeScrollLockTarget = newOwner._resolveScrollLockTarget();
@@ -79,7 +82,7 @@ export class Movia {
     closeMethods = [];
     destroyOnClose = false; // có xóa khỏi DOM khi đóng không
     enableScrollLock = true; // cho phép khóa cuộn trang
-    restoreScrollOnOpen = false; // khôi phục vị trí cuộn khi đóng
+    preserveScrollPosition = false; // khôi phục vị trí cuộn khi đóng
     scrollLockTarget = null; // mục tiêu khóa cuộn trang riêng cho movia này
     
     footer = false;
@@ -105,7 +108,7 @@ export class Movia {
             onOpen : null ,
             onClose : null,
 
-            restoreScrollOnOpen:false // khôi phục vị trí cuộn khi đóng
+            preserveScrollPosition:false // khôi phục vị trí cuộn khi đóng
         }
         const finalConfig = Object.assign({},defaultConfig,config);
         Object.assign(this,finalConfig); // sao chép toàn bộ thuộc tính vào this
@@ -536,6 +539,10 @@ export class Movia {
         }
         return document.body; 
     }
+    
+    _hasScrollbar(target){
+        return target.scrollHeight > target.clientHeight;
+    }
 
     // Khóa cuộn trang
     _lockScroll(){
@@ -546,7 +553,7 @@ export class Movia {
         this._isScrollLocked = true;
         
         this._preScrollPaddingRight = target.style.paddingRight || "";
-        const scrollbarWidth = this._getScrollbarWidth();
+        const scrollbarWidth = this._hasScrollbar(target) ? this._getScrollbarWidth() : 0;
         
         target.classList.add("movia--no-scroll");
         target.style.paddingRight = 
@@ -555,6 +562,8 @@ export class Movia {
 
     // Mở khóa cuộn trang
     _unlockScroll(){
+        if(activeScrollLockOwner !== this) return;
+
         if(!this._isScrollLocked) return;
         const target = this._activeScrollLockTarget;
         if(!target) return;
@@ -632,13 +641,14 @@ export class Movia {
             if(!this.isOpen) return; // nếu đã đóng trong lúc chờ transition
                 // Khôi phục nơi vị trí người dùng đang đọc
 
-                if (this.restoreScrollOnOpen && typeof this._saveScroll === "number") {
-                    const moviaContent = backdrop.querySelector(".movia__content");
-                    if (moviaContent) {
-                        moviaContent.scrollTop = this._saveScroll;
-                    }
+            if (this.preserveScrollPosition && typeof this._saveScroll === "number") {
+                const moviaContent = backdrop.querySelector(".movia__content");
+                if (moviaContent) {
+                    moviaContent.scrollTop = this._saveScroll;
                 }
-                this.onOpen?.()
+            }
+
+            this.onOpen?.()
         })
     }
 
@@ -655,20 +665,18 @@ export class Movia {
             moviaStack.splice(index,1);
         }
 
-        // Cập nhật trạng thái khóa cuộn trang
-        updateScrollLock();
-
+        
         const backdrop = this.backdrop;
         
         // Lưu vị trí người dùng đang đọc
-        if(this.restoreScrollOnOpen){
+        if(this.preserveScrollPosition){
             const moviaContent = backdrop.querySelector(".movia__content");
             this._saveScroll = moviaContent.scrollTop;
         }
-
+        
         // Xóa backdrop với transition
         backdrop.classList.remove("movia--show");
-
+        
         // Xóa event Escape trong Close() để tắt movia 
         if (this._keydownHandler && this._keydownBound) {
             document.removeEventListener("keydown", this._keydownHandler);
@@ -676,8 +684,11 @@ export class Movia {
         }
         
         const willDestroy = forceDestroy || this.destroyOnClose;
-
+        
         this._onTransitionEnd(backdrop,() => {
+            // Cập nhật trạng thái khóa cuộn trang
+            updateScrollLock();
+            
             if(this.isOpen) return; // chỉ bắt đầu đóng nếu vẫn đang đóng
                 if(willDestroy)
                 {
@@ -704,12 +715,22 @@ export class Movia {
         })
     }
 
+    // Bắt buộc mở khóa cuộn trang (dành cho trường hợp đặc biệt)
+    _forceReleaseScrollLock(){
+        if(activeScrollLockOwner !== this) return;
+        this._unlockScroll();
+        activeScrollLockOwner = null;
+    }
+
     destroy()
     {
         this._isDestroyed = true; // đã bị hủy
+
+        this._forceReleaseScrollLock();
+        
         if(this.isOpen)
         {
-                this.close(true);
+            this.close(true);
         } else if(this.backdrop){
             this.backdrop.remove();
         }
