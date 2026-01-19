@@ -26,7 +26,7 @@ function updateScrollLock()
 
     // chỉ Owner hiện tại mới mở khóa
     if(activeScrollLockOwner){
-        activeScrollLockOwner._unlockScroll();
+        activeScrollLockOwner._unlockScrollIfOwner();
     }
 
     if(newOwner){
@@ -161,6 +161,7 @@ export class Movia {
         this._keydownBound = false; // cờ đánh dấu đã gắn sự kiện keydown chưa
         this._keydownHandler = null; // Hành vi xử lý
         this._childMovias = []; // List movia
+        this._parentMovia = null; // movia cha nếu có
 
         // Scroll Lock runtime : mở khóa chính xác khi modal đóng
         this._isScrollLocked = false; // trạng thái khóa cuộn trang
@@ -491,7 +492,9 @@ export class Movia {
     setupChildMovia(childMovia)
     {
         if(!childMovia) return;
+
         this._childMovias.push(childMovia);
+        childMovia._parentMovia = this;
 
         if(this.isOpen && this.backdrop)
         {
@@ -561,7 +564,7 @@ export class Movia {
     }
 
     // Mở khóa cuộn trang
-    _unlockScroll(){
+    _unlockScrollIfOwner(){
         if(activeScrollLockOwner !== this) return;
 
         if(!this._isScrollLocked) return;
@@ -718,7 +721,7 @@ export class Movia {
     // Bắt buộc mở khóa cuộn trang (dành cho trường hợp đặc biệt)
     _forceReleaseScrollLock(){
         if(activeScrollLockOwner !== this) return;
-        this._unlockScroll();
+        this._unlockScrollIfOwner();
         activeScrollLockOwner = null;
     }
 
@@ -726,8 +729,20 @@ export class Movia {
     {
         this._isDestroyed = true; // đã bị hủy
 
-        this._forceReleaseScrollLock();
-        
+        // mở khóa cuộn trang nếu cần
+        this._forceReleaseScrollLock(); 
+
+        // Gỡ bỏ khỏi movia cha nếu có
+        if(this._parentMovia){
+            const list = this._parentMovia._childMovias;
+            const index = list.indexOf(this);
+            if(index !== -1){
+                list.splice(index,1);
+            }
+            this._parentMovia = null;
+        }
+
+        // Đóng movia nếu đang mở
         if(this.isOpen)
         {
             this.close(true);
