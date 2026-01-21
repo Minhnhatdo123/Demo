@@ -437,6 +437,7 @@ export class Movia {
         return btn;
     }
     
+    // Thêm nút vào footer
     addFooterButton(btnConfig = {}) {
         if (!btnConfig || typeof btnConfig !== "object") return;
 
@@ -498,7 +499,7 @@ export class Movia {
 
         if(this.isOpen && this.backdrop)
         {
-            this._attachChildOpenHandler(childMovia);
+            this._attachChildOpenHandler();
         }
     }
 
@@ -515,7 +516,7 @@ export class Movia {
             const openId = btn.dataset.openMovia ?? btn.getAttribute("data-open-movia");
             if(!openId) return;
             const child = this._childMovias.find(m =>
-                openId === m.templateId || openId === String(m.id)
+                openId === String(m.id) || openId === m.templateId
             );
             if(child){
                 child.open();
@@ -544,6 +545,10 @@ export class Movia {
     }
     
     _hasScrollbar(target){
+        if(target === document.body){
+            return document.documentElement.scrollHeight > 
+            document.documentElement.clientHeight;
+        }
         return target.scrollHeight > target.clientHeight;
     }
 
@@ -555,7 +560,7 @@ export class Movia {
         
         this._isScrollLocked = true;
         
-        this._preScrollPaddingRight = target.style.paddingRight || "";
+        this._preScrollPaddingRight = window.getComputedStyle(target).paddingRight || "";
         const scrollbarWidth = this._hasScrollbar(target) ? this._getScrollbarWidth() : 0;
         
         target.classList.add("movia--no-scroll");
@@ -572,7 +577,7 @@ export class Movia {
         if(!target) return;
         
         target.classList.remove("movia--no-scroll");
-        target.style.paddingRight = this._preScrollPaddingRight || "";
+        target.style.paddingRight = this._preScrollPaddingRight;
         
         this._isScrollLocked = false;
         this._activeScrollLockTarget = null;
