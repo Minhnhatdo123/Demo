@@ -545,9 +545,11 @@ export class Movia {
     }
     
     _hasScrollbar(target){
-        if(target === document.body){
-            return document.documentElement.scrollHeight > 
-            document.documentElement.clientHeight;
+        if(target === document.body || document.documentElement){
+            const html = document.documentElement;
+            const body = document.body;
+            return (html.scrollHeight > html.clientHeight) || 
+            (body.scrollHeight > body.clientHeight);
         }
         return target.scrollHeight > target.clientHeight;
     }

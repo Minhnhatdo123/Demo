@@ -12,10 +12,10 @@ const modal1 = new Movia({
     `,
     closeMethods: ["button", "overlay", "escape"],
     destroyOnClose:false,
-    enableScrollLock:false, // Tắt khóa cuộn trang cho modal này
-    scrollLockTarget: () => {
-        return document.querySelector('.wrapper');
-    } // Chỉ định mục tiêu khóa cuộn trang riêng cho modal này
+    // enableScrollLock:false, // Tắt khóa cuộn trang cho modal này
+    // scrollLockTarget: () => {
+    //     return document.querySelector('.wrapper');
+    // } // Chỉ định mục tiêu khóa cuộn trang riêng cho modal này
 });
 
 modal1Btn.addEventListener("click", () => {
